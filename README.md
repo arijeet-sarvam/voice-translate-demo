@@ -1,4 +1,4 @@
-# 🎤 Voice Translator App
+# 🎤 Sarvam Voice Translator App
 
 A React-based voice translation application that allows users to record audio, transcribe it, translate to different Indian languages, and generate voice output using advanced AI APIs.
 
