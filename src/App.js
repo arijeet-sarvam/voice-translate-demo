@@ -236,8 +236,11 @@ class F5AudioAPI {
       console.log('🎭 Using voice cloning mode - trying F5 API first');
       
       // First convert to proper WAV format
+      const conversionStartTime = performance.now();
       const wavBlob = await this.convertToWav(audioFile);
       const audioBase64 = await this.fileToBase64(wavBlob);
+      const conversionEndTime = performance.now();
+      console.log(`⚡ Audio conversion completed in ${(conversionEndTime - conversionStartTime).toFixed(2)}ms`);
       
       const payload = {
         gen_text: genText,
@@ -261,6 +264,7 @@ class F5AudioAPI {
       console.log('🎯 F5 API URL:', f5Url);
       console.log('🌍 Environment:', process.env.NODE_ENV);
       
+      const f5ApiStartTime = performance.now();
       const response = await fetch(f5Url, {
         method: 'POST',
         headers: {
@@ -268,9 +272,11 @@ class F5AudioAPI {
         },
         body: JSON.stringify(payload)
       });
+      const f5ApiEndTime = performance.now();
       
       console.log('🔍 F5 API Response Info:');
       console.log('Response Status:', response.status);
+      console.log(`🚀 F5 API call completed in ${(f5ApiEndTime - f5ApiStartTime).toFixed(2)}ms`);
       console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
@@ -292,7 +298,10 @@ class F5AudioAPI {
         console.warn('🚨 F5 API failed, trying Sarvam TTS Bulbul fallback...', error);
         
         // Fallback to Sarvam TTS Bulbul API
+        const fallbackStartTime = performance.now();
         const fallbackResult = await this.generateAudioWithSarvam(genText, targetLanguage, apiKey);
+        const fallbackEndTime = performance.now();
+        console.log(`🔄 Sarvam TTS fallback completed in ${(fallbackEndTime - fallbackStartTime).toFixed(2)}ms`);
         
         if (fallbackResult.success) {
           return { success: true, audio_base64: fallbackResult.audio_base64, source: 'Sarvam-Bulbul-Fallback' };
@@ -337,6 +346,14 @@ function App() {
   // Start recording
   const startRecording = async () => {
     try {
+      // Clear previous results immediately when starting new recording
+      setTranscribedText('');
+      setTranslatedText('');
+      setGeneratedAudio(null);
+      setProcessing(false);
+      setCurrentStep('');
+      setIsPlayingAudio(false);
+      setPlayingHistoryIndex(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       // Check supported formats and choose the best one
@@ -379,11 +396,8 @@ function App() {
         setAudioBlob(blob);
         stream.getTracks().forEach(track => track.stop());
         
-        // Auto-start processing after audioBlob is set
-        setTimeout(() => {
-          // Call processAudio with the blob directly to avoid state timing issues
-          processAudioWithBlob(blob);
-        }, 100);
+        // Auto-start processing immediately
+        processAudioWithBlob(blob);
       };
 
       mediaRecorderRef.current.start();
@@ -409,16 +423,25 @@ function App() {
       return;
     }
     
+    const startTime = performance.now();
+    console.log('⏱️ Processing started at:', startTime);
+    
     setProcessing(true);
     setCurrentStep('Transcribing audio...');
 
     try {
       // Step 1: Transcribe audio
+      const transcriptionStartTime = performance.now();
+      console.log('🎤 Starting transcription...');
+      
       const audioFile = new File([blob], 'recording.wav', { type: 'audio/wav' });
       
       const transcriptionResponse = await sarvamClient.speechToText.transcribe(audioFile, {
         model: 'saarika:v2',
       });
+
+      const transcriptionEndTime = performance.now();
+      console.log(`✅ Transcription completed in ${(transcriptionEndTime - transcriptionStartTime).toFixed(2)}ms`);
 
       const transcribed = transcriptionResponse.transcript;
       const detectedLanguage = transcriptionResponse.language_code;
@@ -426,6 +449,9 @@ function App() {
       setCurrentStep('Translating text...');
 
       // Step 2: Translate text
+      const translationStartTime = performance.now();
+      console.log('🔄 Starting translation...');
+      
       const translationResponse = await sarvamClient.text.translate({
         input: transcribed,
         source_language_code: detectedLanguage,
@@ -433,17 +459,29 @@ function App() {
         model: 'sarvam-translate:v1'
       });
 
+      const translationEndTime = performance.now();
+      console.log(`✅ Translation completed in ${(translationEndTime - translationStartTime).toFixed(2)}ms`);
+
       const translated = translationResponse.translated_text;
       setTranslatedText(translated);
 
       // Step 3: Generate audio based on selected mode
       setCurrentStep('Generating audio...');
+      const audioStartTime = performance.now();
+      console.log('🎵 Starting audio generation...');
+      
       const audioResult = await f5Api.generateAudio(translated, transcribed, blob, selectedLanguage, API_KEY, voiceCloningMode);
       
       if (audioResult.success) {
+        const audioEndTime = performance.now();
+        const totalTime = audioEndTime - startTime;
+        const audioGenerationTime = audioEndTime - audioStartTime;
+        
+        console.log(`✅ Audio generation completed in ${audioGenerationTime.toFixed(2)}ms using ${audioResult.source}`);
+        console.log(`🏁 Total processing time: ${totalTime.toFixed(2)}ms`);
+        
         setGeneratedAudio(audioResult.audio_base64);
         setCurrentStep(`Complete! (${audioResult.source} used)`);
-        console.log(`🎵 Audio generated successfully using ${audioResult.source}`);
         
         // Add to session history
         const historyEntry = {
@@ -460,10 +498,8 @@ function App() {
         
         setSessionHistory(prev => [historyEntry, ...prev]); // Add to beginning of array
         
-        // Auto-play the generated audio
-        setTimeout(() => {
-          playAudioData(audioResult.audio_base64);
-        }, 500); // Small delay to ensure UI updates
+        // Auto-play the generated audio immediately
+        playAudioData(audioResult.audio_base64);
         
       } else {
         console.warn('Audio generation failed:', audioResult.error);
