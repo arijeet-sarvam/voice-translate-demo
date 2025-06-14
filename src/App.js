@@ -20,7 +20,10 @@ const LANGUAGES = [
 // F5 API Class
 class F5AudioAPI {
   constructor(baseUrl = '') {
-    this.baseUrl = baseUrl; // Empty string uses proxy
+    // Use full URL in production, proxy in development
+    this.baseUrl = baseUrl || (process.env.NODE_ENV === 'production' 
+      ? 'http://34.100.221.107:8967' 
+      : ''); // Empty string uses proxy in development
   }
 
   // Convert audio blob to WAV format
@@ -252,7 +255,11 @@ class F5AudioAPI {
       console.log('Base64 Audio Preview:', audioBase64.substring(0, 100) + '...');
       console.log('Full Payload:', JSON.stringify(payload, null, 2));
       
-      const response = await fetch(`${this.baseUrl}/f5`, {
+      const f5Url = `${this.baseUrl}/f5`;
+      console.log('🎯 F5 API URL:', f5Url);
+      console.log('🌍 Environment:', process.env.NODE_ENV);
+      
+      const response = await fetch(f5Url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
