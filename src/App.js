@@ -20,10 +20,10 @@ const LANGUAGES = [
 // F5 API Class
 class F5AudioAPI {
   constructor(baseUrl = '') {
-    // Use full URL in production, proxy in development
+    // Use Vercel serverless proxy in production, local proxy in development
     this.baseUrl = baseUrl || (process.env.NODE_ENV === 'production' 
-      ? 'http://34.100.221.107:8967' 
-      : ''); // Empty string uses proxy in development
+      ? '/api' // Use Vercel serverless function proxy
+      : ''); // Empty string uses local proxy in development
   }
 
   // Convert audio blob to WAV format
@@ -255,7 +255,9 @@ class F5AudioAPI {
       console.log('Base64 Audio Preview:', audioBase64.substring(0, 100) + '...');
       console.log('Full Payload:', JSON.stringify(payload, null, 2));
       
-      const f5Url = `${this.baseUrl}/f5`;
+      const f5Url = process.env.NODE_ENV === 'production' 
+        ? `${this.baseUrl}/f5-proxy` 
+        : `${this.baseUrl}/f5`;
       console.log('🎯 F5 API URL:', f5Url);
       console.log('🌍 Environment:', process.env.NODE_ENV);
       
