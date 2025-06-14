@@ -316,7 +316,7 @@ function App() {
   const [processing, setProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState('');
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [voiceCloningMode, setVoiceCloningMode] = useState('standard'); // 'standard' or 'cloning'
+  const [voiceCloningMode, setVoiceCloningMode] = useState('cloning'); // 'standard' or 'cloning'
   const [sessionHistory, setSessionHistory] = useState([]); // Store all interactions
   const [playingHistoryIndex, setPlayingHistoryIndex] = useState(null); // Track which history item is playing
 
@@ -485,7 +485,7 @@ function App() {
     setGeneratedAudio(null);
     setProcessing(false);
     setCurrentStep('');
-    setVoiceCloningMode('standard'); // Reset to default mode
+    setVoiceCloningMode('cloning'); // Reset to default mode
     setIsPlayingAudio(false);
     setPlayingHistoryIndex(null);
   };
@@ -654,7 +654,7 @@ function App() {
                 />
                 <label htmlFor="standard-mode" className="ml-3 block text-sm text-gray-700">
                   <span className="font-medium">Without Voice Clone</span>
-                  <span className="text-gray-500 block text-xs">Standard text-to-speech (Recommended)</span>
+                  <span className="text-gray-500 block text-xs">Standard text-to-speech</span>
                 </label>
               </div>
               <div className="flex items-center">
@@ -670,7 +670,7 @@ function App() {
                 />
                 <label htmlFor="cloning-mode" className="ml-3 block text-sm text-gray-700">
                   <span className="font-medium">Voice Cloning</span>
-                  <span className="text-gray-500 block text-xs">Clone your voice style (Experimental)</span>
+                  <span className="text-gray-500 block text-xs">Clone your voice style (Default)</span>
                 </label>
               </div>
             </div>
