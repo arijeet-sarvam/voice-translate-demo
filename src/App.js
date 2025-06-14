@@ -5,10 +5,16 @@ const API_KEY = '954b2595-6a49-49ec-8974-268a7cec4b69';
 
 // Language options with their codes
 const LANGUAGES = [
+  { code: 'bn-IN', name: 'Bengali' },
+  { code: 'gu-IN', name: 'Gujarati' },
   { code: 'hi-IN', name: 'Hindi' },
+  { code: 'kn-IN', name: 'Kannada' },
+  { code: 'ml-IN', name: 'Malayalam' },
   { code: 'mr-IN', name: 'Marathi' },
   { code: 'od-IN', name: 'Odia' },
-  { code: 'pa-IN', name: 'Punjabi' }
+  { code: 'pa-IN', name: 'Punjabi' },
+  { code: 'ta-IN', name: 'Tamil' },
+  { code: 'te-IN', name: 'Telugu' }
 ];
 
 // F5 API Class
@@ -226,6 +232,12 @@ function App() {
         
         setAudioBlob(blob);
         stream.getTracks().forEach(track => track.stop());
+        
+        // Auto-start processing after audioBlob is set
+        setTimeout(() => {
+          // Call processAudio with the blob directly to avoid state timing issues
+          processAudioWithBlob(blob);
+        }, 100);
       };
 
       mediaRecorderRef.current.start();
@@ -244,19 +256,19 @@ function App() {
     }
   };
 
-  // Process the complete workflow
-  const processAudio = async () => {
-    if (!audioBlob) {
-      alert('Please record audio first');
+  // Process audio with a specific blob (for auto-processing)
+  const processAudioWithBlob = async (blob) => {
+    if (!blob) {
+      console.error('No audio blob provided');
       return;
     }
-
+    
     setProcessing(true);
     setCurrentStep('Transcribing audio...');
 
     try {
       // Step 1: Transcribe audio
-      const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
+      const audioFile = new File([blob], 'recording.wav', { type: 'audio/wav' });
       
       const transcriptionResponse = await sarvamClient.speechToText.transcribe(audioFile, {
         model: 'saarika:v2',
@@ -280,7 +292,7 @@ function App() {
 
       // Step 3: Generate audio using F5 API (with fallback)
       setCurrentStep('Generating audio...');
-      const audioResult = await f5Api.generateAudio(translated, transcribed, audioBlob);
+      const audioResult = await f5Api.generateAudio(translated, transcribed, blob);
       
       if (audioResult.success) {
         setGeneratedAudio(audioResult.audio_base64);
@@ -302,6 +314,16 @@ function App() {
       setProcessing(false);
       setCurrentStep('');
     }
+  };
+
+  // Process the complete workflow (for legacy compatibility)
+  const processAudio = async () => {
+    if (!audioBlob) {
+      alert('Please record audio first');
+      return;
+    }
+    
+    await processAudioWithBlob(audioBlob);
   };
 
   // Reset all states
@@ -326,16 +348,16 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#F4EFE4' }}>
       <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            🎤 Voice Translator
-          </h1>
-          <p className="text-xl text-gray-600">
-            Record, translate, and listen to your voice in different languages
-          </p>
-        </div>
+                  <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-black mb-4">
+              🎤 Sarvam Voice Translation
+            </h1>
+            <p className="text-xl text-black">
+              Record, translate, and listen to your voice in different languages
+            </p>
+          </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8 space-y-8">
           {/* Language Selection */}
@@ -382,31 +404,9 @@ function App() {
               )}
             </div>
 
-            {audioBlob && !isRecording && (
+            {audioBlob && !isRecording && !processing && (
               <div className="mb-6">
-                <p className="text-green-600 font-medium mb-3">✓ Audio recorded successfully!</p>
-                <button
-                  onClick={processAudio}
-                  className="inline-flex items-center px-8 py-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full transition-colors duration-200 shadow-lg"
-                  disabled={processing}
-                >
-                  {processing ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                      Send & Process
-                    </>
-                  )}
-                </button>
+                <p className="text-green-600 font-medium">✓ Audio recorded successfully! Processing...</p>
               </div>
             )}
           </div>
@@ -427,20 +427,7 @@ function App() {
           {/* Results Section */}
           {transcribedText && (
             <div className="space-y-6">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Transcribed Text:</h3>
-                <p className="text-gray-700">{transcribedText}</p>
-              </div>
-
-              {translatedText && (
-                <div className="bg-green-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                    Translated Text ({LANGUAGES.find(l => l.code === selectedLanguage)?.name}):
-                  </h3>
-                  <p className="text-gray-700">{translatedText}</p>
-                </div>
-              )}
-
+              {/* Audio Generation Section - Now First */}
               {generatedAudio ? (
                 <div className="bg-purple-50 rounded-lg p-4 text-center">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Generated Audio:</h3>
@@ -461,6 +448,22 @@ function App() {
                     🔧 Audio generation service is currently unavailable. 
                     Your text has been successfully transcribed and translated!
                   </p>
+                </div>
+              )}
+
+              {/* Transcribed Text Section - Now Second */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Transcribed Text:</h3>
+                <p className="text-gray-700">{transcribedText}</p>
+              </div>
+
+              {/* Translated Text Section - Now Third */}
+              {translatedText && (
+                <div className="bg-green-50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                    Translated Text ({LANGUAGES.find(l => l.code === selectedLanguage)?.name}):
+                  </h3>
+                  <p className="text-gray-700">{translatedText}</p>
                 </div>
               )}
             </div>
