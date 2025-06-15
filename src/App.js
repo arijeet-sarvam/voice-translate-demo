@@ -337,11 +337,26 @@ function App() {
   const [voiceCloningMode, setVoiceCloningMode] = useState('cloning'); // 'standard' or 'cloning'
   const [sessionHistory, setSessionHistory] = useState([]); // Store all interactions
   const [playingHistoryIndex, setPlayingHistoryIndex] = useState(null); // Track which history item is playing
+  const [audioGenerationFailed, setAudioGenerationFailed] = useState(false); // Track when both F5 and TTS APIs fail
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const sarvamClient = new SarvamAIClient({ apiSubscriptionKey: API_KEY });
   const f5Api = new F5AudioAPI();
+
+  // Convert technical source names to user-friendly display text
+  const getDisplaySourceName = (technicalSource) => {
+    switch (technicalSource) {
+      case 'F5-VoiceClone':
+        return 'Voice Cloning';
+      case 'Sarvam-Bulbul':
+        return 'Text-to-Speech';
+      case 'Sarvam-Bulbul-Fallback':
+        return 'Text-to-Speech (Fallback)';
+      default:
+        return technicalSource;
+    }
+  };
 
   // Start recording
   const startRecording = async () => {
@@ -354,6 +369,7 @@ function App() {
       setCurrentStep('');
       setIsPlayingAudio(false);
       setPlayingHistoryIndex(null);
+      setAudioGenerationFailed(false);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       // Check supported formats and choose the best one
@@ -477,11 +493,12 @@ function App() {
         const totalTime = audioEndTime - startTime;
         const audioGenerationTime = audioEndTime - audioStartTime;
         
-        console.log(`✅ Audio generation completed in ${audioGenerationTime.toFixed(2)}ms using ${audioResult.source}`);
+        console.log(`✅ Audio generation completed in ${audioGenerationTime.toFixed(2)}ms using ${audioResult.source} (${getDisplaySourceName(audioResult.source)})`);
         console.log(`🏁 Total processing time: ${totalTime.toFixed(2)}ms`);
         
         setGeneratedAudio(audioResult.audio_base64);
-        setCurrentStep(`Complete! (${audioResult.source} used)`);
+        setAudioGenerationFailed(false); // Clear any previous failure state
+        setCurrentStep(`Complete! (${getDisplaySourceName(audioResult.source)} completed)`);
         
         // Add to session history
         const historyEntry = {
@@ -503,7 +520,8 @@ function App() {
         
       } else {
         console.warn('Audio generation failed:', audioResult.error);
-        setCurrentStep('Translation completed! (Audio generation unavailable)');
+        setAudioGenerationFailed(true); // Both F5 and TTS APIs failed
+        setCurrentStep('Translation completed! (Audio generation failed)');
         // Don't set generatedAudio, so the Play Audio button won't appear
       }
 
@@ -533,6 +551,7 @@ function App() {
     setVoiceCloningMode('cloning'); // Reset to default mode
     setIsPlayingAudio(false);
     setPlayingHistoryIndex(null);
+    setAudioGenerationFailed(false);
   };
 
   // Clear session history
@@ -799,13 +818,13 @@ function App() {
                     )}
                   </button>
                 </div>
-              ) : translatedText && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Audio Generation</h3>
-                  <p className="text-yellow-700">
-                    🔧 {voiceCloningMode === 'cloning' 
-                      ? 'Voice cloning service is currently unavailable.' 
-                      : 'Text-to-speech service is currently unavailable.'
+              ) : audioGenerationFailed && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Audio Generation Failed</h3>
+                  <p className="text-red-700">
+                    ❌ {voiceCloningMode === 'cloning' 
+                      ? 'Both voice cloning (F5) and text-to-speech (Sarvam TTS) services failed.' 
+                      : 'Text-to-speech (Sarvam TTS) service failed.'
                     }<br />
                     Your text has been successfully transcribed and translated!
                   </p>
@@ -851,7 +870,7 @@ function App() {
                         <span className="font-medium">#{sessionHistory.length - index}</span> • {entry.timestamp} • {entry.languageName} • {entry.voiceMode} mode
                       </div>
                       <div className="text-xs text-gray-400">
-                        {entry.audioSource}
+                        {getDisplaySourceName(entry.audioSource)}
                       </div>
                     </div>
                     
