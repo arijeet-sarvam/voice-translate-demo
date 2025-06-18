@@ -116,7 +116,7 @@ class F5AudioAPI {
       const payload = {
         text: text,
         target_language_code: targetLanguage,
-        speaker: "anushka",
+        speaker: "abhilash",
         model: "bulbul:v2",
         enable_preprocessing: true,
         sample_rate: 22050
@@ -1151,7 +1151,7 @@ function App() {
       body: JSON.stringify({
         text: text,
         target_language_code: language,
-        speaker: "anushka",
+        speaker: "abhilash",
         model: "bulbul:v2",
         enable_preprocessing: true,
         sample_rate: 22050
