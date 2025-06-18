@@ -1239,7 +1239,7 @@ function App() {
           </div>
 
           {/* Voice Mode Selection */}
-          <div>
+          <div className="pt-6 mb-8">
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Audio Generation Mode
             </label>
